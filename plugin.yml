@@ -1,0 +1,11 @@
+name: BazaarPM5
+version: 1.0.0
+main: TheWindows\Bazaar\Main
+api: [5.0.0]
+author: TheWindows
+depend:
+  - EconomyAPI
+permissions:
+  winshop.command:
+    description: Allows access to the bazaar command
+    default: true
