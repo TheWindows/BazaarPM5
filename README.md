@@ -1,6 +1,6 @@
 # BazaarPM5
 
-**BazaarPM5** is a PocketMine-MP plugin for API 5 that allows players to buy, sell, and trade items through a custom GUI-based marketplace.
+**BazaarPM5** is a PocketMine-MP plugin for API 5 that allows players to buy, and sell items through a custom GUI-based marketplace.
 
 ---
 
@@ -24,8 +24,7 @@
 - Supports custom forms with FormAPI.
 - Integration with EconomyAPI for player balances.
 - Sell and buy items using in-game currency.
-- Add enchantments to items for sale.
-- Supports item preview and custom pricing.
+- Supports item preview.
 - Works with PocketMine-MP API 5.
 
 ---
@@ -35,8 +34,6 @@
 | Command       | Description                          | Permission           |
 |---------------|--------------------------------------|--------------------|
 | `/bazaar`     | Opens the bazaar menu                 | `winshop.command`   |
-| `/sell <item>`| Sell an item through the bazaar GUI  | `winshop.command`   |
-| `/buy <item>` | Buy an item from the bazaar           | `winshop.command`   |
 
 ---
 
@@ -59,7 +56,7 @@
 
 ## ⚠ Notes
 
-- Only players with `winshop.command` permission can access the bazaar.
+- All players with `winshop.command` permission can access the bazaar.
 - Make sure your EconomyAPI balance is sufficient before buying items.
 - Plugin requires PocketMine-MP API 5.
 
