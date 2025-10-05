@@ -60,6 +60,8 @@
 - [x] Add price changing functionality in config.
 - [x] Add message customization options.
 - [x] Add more items to the bazaar.
+- [ ] Add Random Price Change.
+- [ ] Add Custom Items.
 
 ---
 
