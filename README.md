@@ -56,10 +56,10 @@
 
 ## 📋 To-Do
 
-- [ ] Add MySQL support for data storage.
-- [ ] Add price changing functionality in config.
-- [ ] Add message customization options.
-- [ ] Add more items to the bazaar.
+- [x] Add MySQL support for data storage.
+- [x] Add price changing functionality in config.
+- [x] Add message customization options.
+- [x] Add more items to the bazaar.
 
 ---
 
