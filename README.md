@@ -1,6 +1,6 @@
 # BazaarPM5
 
-**BazaarPM5** is a PocketMine-MP plugin for API 5 that allows players to buy, and sell items through a custom GUI-based marketplace.
+**BazaarPM5** is a PocketMine-MP plugin for API 5 that allows players to buy and sell items through a custom GUI-based marketplace.
 
 ---
 
@@ -51,6 +51,15 @@
 2. Make sure you have **EconomyAPI**, **InvMenu**, and **FormAPI** installed.  
 3. Start your server to generate the configuration files.  
 4. Use `/bazaar` in-game to open the bazaar menu.
+
+---
+
+## 📋 To-Do
+
+- [ ] Add MySQL support for data storage.
+- [ ] Add price changing functionality in config.
+- [ ] Add message customization options.
+- [ ] Add more items to the bazaar.
 
 ---
 
