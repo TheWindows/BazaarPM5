@@ -48,7 +48,7 @@ class ItemTransactionGui {
         $this->itemId = $itemId;
         
         $this->menu = InvMenu::create(InvMenu::TYPE_CHEST);
-        $this->menu->setName($this->plugin->getConfig()->getNested("messages.item_transaction_gui_title", "§l§e» §r§bItem Transaction §l§e«"));
+        $this->menu->setName((string) $this->plugin->getConfig()->getNested("messages.item_transaction_gui_title", "§l§e» §r§bItem Transaction §l§e«"));
         
         $this->menu->setListener(function (InvMenuTransaction $transaction): InvMenuTransactionResult {
             $player = $transaction->getPlayer();
@@ -138,17 +138,22 @@ class ItemTransactionGui {
         $money = $this->economy instanceof EconomyAPI ? $this->economy->myMoney($player) : 0.0;
         
         $displayItem = clone $this->item;
-        $displayItem->setCount(1); 
-        $displayItem->setLore([
-            "§r",
-            "§7Buy Price: §a§l$" . $this->buyPrice . "§r §7each",
-            "§7Sell Price: §6§l$" . $this->sellPrice . "§r §7each",
-            "§r",
-            "§7Your Money: §e§l$" . $money . "§r",
-            "§r",
-            "§7Buy Amount: §a" . $buyAmount,
-            "§7Sell Amount: §c" . $sellAmount
-        ]);
+        $displayItem->setCount(1);
+        $existingLore = $displayItem->getLore();
+        $displayItem->setLore(array_merge(
+            $existingLore,
+            $existingLore === [] ? [] : ["§r"],
+            [
+                "§r",
+                "§7Buy Price: §a§l$" . number_format($this->buyPrice, 2) . "§r §7each",
+                "§7Sell Price: §6§l$" . number_format($this->sellPrice, 2) . "§r §7each",
+                "§r",
+                "§7Your Money: §e§l$" . number_format($money, 2) . "§r",
+                "§r",
+                "§7Buy Amount: §a" . $buyAmount,
+                "§7Sell Amount: §c" . $sellAmount
+            ]
+        ));
         
         $inventory->setItem(13, $displayItem);
         
@@ -223,20 +228,24 @@ class ItemTransactionGui {
 
         $totalCost = $this->buyPrice * $amount;
         $money = $this->economy->myMoney($player);
-        
+
         if ($money < $totalCost) {
             $player->sendMessage(str_replace("{total}", number_format($totalCost, 2), $this->plugin->getConfig()->getNested("messages.not_enough_money", "§cYou don't have enough money! Need: {total}")));
             return;
         }
-        
-        if (!$player->getInventory()->canAddItem($this->item->setCount($amount))) {
+
+        $give = clone $this->item;
+        $give->setCount($amount);
+        if (!$player->getInventory()->canAddItem($give)) {
             $player->sendMessage($this->plugin->getConfig()->getNested("messages.not_enough_inventory_space", "§cNot enough inventory space!"));
             return;
         }
-        
+
         $this->economy->reduceMoney($player, $totalCost);
-        $this->dbManager->recordTransaction($this->itemId, $player->getName(), "buy", $amount, $totalCost);
-        
+        if ($this->dbManager !== null) {
+            $this->dbManager->recordTransaction($this->itemId, $player->getName(), "buy", $amount, $totalCost);
+        }
+
         $item = clone $this->item;
         $item->setCount($amount);
         $player->getInventory()->addItem($item);
@@ -263,7 +272,9 @@ class ItemTransactionGui {
         
         $totalProfit = $this->sellPrice * $amount;
         $this->economy->addMoney($player, $totalProfit);
-        $this->dbManager->recordTransaction($this->itemId, $player->getName(), "sell", $amount, $totalProfit);
+        if ($this->dbManager !== null) {
+            $this->dbManager->recordTransaction($this->itemId, $player->getName(), "sell", $amount, $totalProfit);
+        }
         $this->removePlayerItems($player, $amount);
         
         $player->sendMessage(str_replace(
@@ -331,7 +342,10 @@ class ItemTransactionGui {
     private function countPlayerItems(Player $player): int {
         $count = 0;
         foreach ($player->getInventory()->getContents() as $item) {
-            if ($item->equals($this->item, true, false)) {
+            // Strict NBT comparison so custom items (name/lore/enchants)
+            // only match identical custom items, while vanilla items
+            // (empty NBT on both sides) still match each other.
+            if ($item->equals($this->item, true, true)) {
                 $count += $item->getCount();
             }
         }
@@ -342,18 +356,20 @@ class ItemTransactionGui {
         $inventory = $player->getInventory();
         $contents = $inventory->getContents();
         $remaining = $amount;
-        
+
         foreach ($contents as $slot => $item) {
-            if ($item->equals($this->item, true, false)) {
+            if ($item->equals($this->item, true, true)) {
                 $itemCount = $item->getCount();
                 if ($itemCount <= $remaining) {
                     $inventory->clear($slot);
                     $remaining -= $itemCount;
                 } else {
-                    $inventory->setItem($slot, $item->setCount($itemCount - $remaining));
+                    $new = clone $item;
+                    $new->setCount($itemCount - $remaining);
+                    $inventory->setItem($slot, $new);
                     $remaining = 0;
                 }
-                
+
                 if ($remaining === 0) {
                     break;
                 }

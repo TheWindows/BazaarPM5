@@ -55,7 +55,7 @@ class ShopGui {
         $this->currentPage = max(0, $page);
         
         $this->menu = InvMenu::create(InvMenu::TYPE_DOUBLE_CHEST);
-        $this->menu->setName($this->plugin->getConfig()->getNested("messages.gui_title", "§l§e» §r§bBazaar §l§e«"));
+        $this->menu->setName((string) $this->plugin->getConfig()->getNested("messages.gui_title", "§l§e» §r§bBazaar §l§e«"));
         
         $this->initShopItems();
         
@@ -110,13 +110,18 @@ class ShopGui {
     }
 
     private function initShopItems(): void {
-        $parser = StringToItemParser::getInstance();
-        $fallbackItem = VanillaBlocks::STONE()->asItem()->setCustomName("§rStone"); 
-        
-        
+        $fallbackItem = VanillaBlocks::STONE()->asItem()->setCustomName("§rStone");
+
         $configItems = $this->plugin->getConfig()->get("items", []);
+        $customItems = $this->plugin->getConfig()->get("custom-items", []);
+        if (!is_array($configItems)) {
+            $configItems = [];
+        }
+        if (!is_array($customItems)) {
+            $customItems = [];
+        }
         $dbItems = $this->dbManager ? $this->dbManager->getAllItemPrices() : [];
-        
+
         $this->shopItems = [
             "blocks" => [],
             "tools" => [],
@@ -124,23 +129,83 @@ class ShopGui {
             "misc" => []
         ];
 
+        $addEntry = function (string $category, string $itemId, array $data) use ($dbItems, $fallbackItem): void {
+            $target = isset($this->shopItems[$category]) ? $category : "misc";
+            if ($target !== $category) {
+                $this->plugin->getLogger()->warning("Unknown category '$category' for item '$itemId', placing it in 'misc'. Use blocks/tools/food/misc.");
+            }
+
+            $priceData = DatabaseManager::extractPrices($itemId, $data);
+            if ($priceData === null) {
+                $this->plugin->getLogger()->warning("Invalid price data for item '$itemId' in category '$category', skipping. Required: buy + sell numbers.");
+                return;
+            }
+
+            $item = CustomItemParser::parse($itemId, $data, $this->plugin);
+            if ($item === null) {
+                $this->plugin->getLogger()->warning("Invalid item '$itemId' in category '$category', using fallback item (stone)");
+                $item = clone $fallbackItem;
+                $item->setCustomName("§rReplacement: $itemId");
+            }
+
+            $dbData = $dbItems[$itemId] ?? null;
+            $this->shopItems[$target][$itemId] = [
+                "item" => $item,
+                "buy" => $dbData["buy_price"] ?? $priceData["buy"],
+                "sell" => $dbData["sell_price"] ?? $priceData["sell"]
+            ];
+        };
+
         foreach ($configItems as $category => $items) {
-            if (!isset($this->shopItems[$category])) continue; 
+            if (!is_array($items)) {
+                continue;
+            }
             foreach ($items as $itemId => $data) {
-                $item = $parser->parse($itemId);
-                if ($item === null) {
-                    $this->plugin->getLogger()->warning("Invalid item ID: $itemId in category $category, using fallback item (stone)");
-                    $item = clone $fallbackItem;
-                    $item->setCustomName("§rReplacement: $itemId");
+                if (!is_array($data)) {
+                    $this->plugin->getLogger()->warning("Invalid entry for item '$itemId' in category '$category', skipping.");
+                    continue;
                 }
-                $dbData = $dbItems[$itemId] ?? null;
-                $this->shopItems[$category][$itemId] = [
-                    "item" => $item,
-                    "buy" => $dbData["buy_price"] ?? $data["buy"],
-                    "sell" => $dbData["sell_price"] ?? $data["sell"]
-                ];
+                $addEntry((string) $category, (string) $itemId, $data);
             }
         }
+
+        if (is_array($customItems)) {
+            foreach ($customItems as $itemId => $data) {                if (!is_array($data)) {
+                    $this->plugin->getLogger()->warning("Invalid custom-item entry '$itemId', skipping.");
+                    continue;
+                }
+                $category = isset($data["category"]) && is_string($data["category"]) && $data["category"] !== ""
+                    ? $data["category"]
+                    : "misc";
+                $addEntry($category, (string) $itemId, $data);
+            }
+        }
+    }
+
+    /**
+     * Re-read live prices from the database (used after random
+     * fluctuations, resets or reloads) without rebuilding items.
+     */
+    public function refreshPrices(): void {
+        if ($this->dbManager === null) {
+            return;
+        }
+        $dbItems = $this->dbManager->getAllItemPrices();
+        foreach ($this->shopItems as $category => $items) {
+            foreach ($items as $itemId => $entry) {
+                if (isset($dbItems[$itemId])) {
+                    $this->shopItems[$category][$itemId]["buy"] = $dbItems[$itemId]["buy_price"];
+                    $this->shopItems[$category][$itemId]["sell"] = $dbItems[$itemId]["sell_price"];
+                }
+            }
+        }
+    }
+
+    /**
+     * Rebuild the whole catalogue from config + DB (used after /bazaar reload).
+     */
+    public function reloadItems(): void {
+        $this->initShopItems();
     }
 
     public function open(Player $player): void {
@@ -169,6 +234,9 @@ class ShopGui {
         
         foreach (self::CATEGORIES as $id => $category) {
             $item = StringToItemParser::getInstance()->parse($category["icon"]) ?? StringToItemParser::getInstance()->parse("paper");
+            if ($item === null) {
+                continue;
+            }
             
             if ($id === $this->currentCategory) {
                 try {
@@ -216,14 +284,19 @@ class ShopGui {
                 $itemData = $items[$itemId];
                 
                 $displayItem = clone $itemData["item"];
-                $displayItem->setCount(1); 
-                $displayItem->setLore([
-                    "§r",
-                    "§7Buy Price: §a§l$" . number_format($itemData["buy"], 2) . "§r",
-                    "§7Sell Price: §6§l$" . number_format($itemData["sell"], 2) . "§r",
-                    "§r",
-                    "§eClick to view options"
-                ]);
+                $displayItem->setCount(1);
+                $existingLore = $displayItem->getLore();
+                $displayItem->setLore(array_merge(
+                    $existingLore,
+                    $existingLore === [] ? [] : ["§r"],
+                    [
+                        "§r",
+                        "§7Buy Price: §a§l$" . number_format($itemData["buy"], 2) . "§r",
+                        "§7Sell Price: §6§l$" . number_format($itemData["sell"], 2) . "§r",
+                        "§r",
+                        "§eClick to view options"
+                    ]
+                ));
                 
                 $inventory->setItem($slot, $displayItem);
             } else {

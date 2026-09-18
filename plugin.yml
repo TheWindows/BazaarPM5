@@ -1,12 +1,16 @@
 name: BazaarPM5
-version: 1.0.1
+version: 1.1.0
 main: TheWindows\Bazaar\Main
 api: [5.0.0]
 author: TheWindows
 depend:
   - EconomyAPI
   - FormAPI
+  - InvMenu
 permissions:
   winshop.command:
     description: Allows access to the bazaar command
     default: true
+  winshop.admin:
+    description: Allows bazaar admin subcommands (updateprices, resetprices, reload)
+    default: op

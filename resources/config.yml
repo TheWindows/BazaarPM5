@@ -1,7 +1,17 @@
-# This Is The Config For Version 1.0.1 Of The BazaarPM5.
+# This Is The Config For Version 1.1.0 Of The BazaarPM5.
 # Make Sure If You Install The New Version You Remove This BazaarPM5 Folder From Plugin-data
-
 # - Made By TheWindows -
+
+# --- Random Price Change ---
+# Every `interval-minutes`, each item's buy price is randomly fluctuated by
+# up to +/- `max-fluctuation` (0.1 = 10%) and clamped inside [min_price, max_price].
+# Sell prices keep their buy/sell ratio. Set `enabled: false` to freeze prices.
+price-auto-update:
+  enabled: true
+  interval-minutes: 30
+  max-fluctuation: 0.1
+  announce: true
+
 messages:
   gui_title: "§l§e» §r§bBazaar §l§e«"
   item_transaction_gui_title: "§l§e» §r§bItem Transaction §l§e«"
@@ -17,6 +27,52 @@ messages:
   not_enough_inventory_space: "§cNot enough inventory space!"
   not_enough_items: "§cYou don't have enough items! Need: {amount}x"
   invalid_amount: "§cInvalid amount!"
+  prices_updated: "§e§lBazaar §r§7» Prices have shifted! Check out the new deals with §e/bazaar§7."
+  prices_updated_admin: "§aFluctuated prices for {count} item(s)."
+  prices_reset: "§aBazaar prices have been reset to config values."
+  reloaded: "§aBazaar configuration reloaded."
+  unknown_subcommand: "§cUnknown subcommand! Use /bazaar help"
+
+# --- Custom Items ---
+# Define fully custom shop entries here (or extend `items.<category>.<id>` with the same keys).
+#   <key>:
+#     item: "<vanilla item id>"   # base item, e.g. diamond_sword (required here)
+#     category: "tools"           # blocks/tools/food/misc (default: misc)
+#     buy: 5000
+#     sell: 425
+#     min_price: 4000
+#     max_price: 6000
+#     custom-name: "§cGod Sword"  # optional (also accepts `name`)
+#     lore: ["§7Legendary weapon", "§6Very powerful!"]  # optional
+#     enchantments: {sharpness: 5, fire_aspect: 2}      # optional (map or list like ["sharpness:5"])
+#     unbreakable: false          # optional
+# NOTE: the <key> must be unique across `items` and `custom-items`.
+custom-items:
+  god_sword:
+    item: "diamond_sword"
+    category: "tools"
+    buy: 5000
+    sell: 425
+    min_price: 4000
+    max_price: 6000
+    custom-name: "§cGod Sword"
+    lore:
+      - "§7A legendary blade"
+      - "§6Forged in the Nether!"
+    enchantments:
+      sharpness: 5
+      fire_aspect: 2
+      unbreaking: 3
+  lucky_apple:
+    item: "apple"
+    category: "food"
+    buy: 250
+    sell: 21.25
+    min_price: 200
+    max_price: 300
+    custom-name: "§6Lucky Apple"
+    lore: ["§eEat me for good luck!"]
+    enchantments: ["unbreaking:1"]
 items:
   blocks:
     stone: { buy: 5, sell: 0.42, min_price: 4, max_price: 6 }
